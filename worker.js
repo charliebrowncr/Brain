@@ -21,23 +21,34 @@ async function reserva(url, env) {
   const nombre = norm(url.searchParams.get('nombre'));
   const apellidos = norm(url.searchParams.get('apellidos'));
   if (!nombre || !apellidos) return json({ notFound: true });
-  // Reservas próximas de Lodgify (API v2)
-  const r = await fetch('https://api.lodgify.com/v2/reservations/bookings?stayFilter=Upcoming&size=100&includeExternal=true', {
-    headers: { 'X-ApiKey': env.LODGIFY_API_KEY, accept: 'application/json' }
-  });
-  if (!r.ok) return json({ error: 'lodgify' }, 502);
-  const { items = [] } = await r.json();
+  if (!env.LODGIFY_API_KEY) return json({ error: 'Falta el secreto LODGIFY_API_KEY en Cloudflare' }, 500);
+  // Reservas en curso (llegan hoy o ya están) + próximas, varias páginas
+  const items = [];
+  for (const filtro of ['Current', 'Upcoming']) {
+    for (let page = 1; page <= 10; page++) {
+      const r = await fetch(`https://api.lodgify.com/v2/reservations/bookings?stayFilter=${filtro}&page=${page}&size=50&includeCount=true&includeExternal=true`, {
+        headers: { 'X-ApiKey': env.LODGIFY_API_KEY.trim(), accept: 'application/json' }
+      });
+      if (!r.ok) return json({ error: 'Lodgify respondió ' + r.status + (r.status === 401 ? ' (clave incorrecta)' : '') }, 502);
+      const d = await r.json();
+      const list = d.items || [];
+      items.push(...list);
+      if (list.length < 50) break;
+    }
+  }
+  const partes = apellidos.split(/\s+/).filter(Boolean);
   const b = items.find(x => {
     const n = norm(x.guest?.name);
-    return n.includes(nombre) && apellidos.split(/\s+/).some(a => n.includes(a));
+    return n.includes(nombre) && partes.some(a => n.includes(a));
   });
-  if (!b) return json({ notFound: true });
-  const [first, ...rest] = (b.guest.name || '').split(' ');
+  if (!b) return json({ notFound: true, revisadas: items.length });
+  const [first, ...rest] = (b.guest.name || '').trim().split(/\s+/);
+  const room = b.rooms?.[0] || {};
   return json({
     first, last: rest.join(' '),
-    villa: b.rooms?.[0]?.name || b.property_name || 'Canavida',
+    villa: room.name || b.property_name || 'Canavida',
     arrival: b.arrival, departure: b.departure,
-    guests: b.rooms?.[0]?.people || b.guests || 1,
+    guests: room.guest_breakdown ? (room.guest_breakdown.adults || 0) + (room.guest_breakdown.children || 0) : (room.people || 1),
     code: String(b.id)
   });
 }
