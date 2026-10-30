@@ -2,10 +2,7 @@ name = "canavida-app"
 main = "worker.js"
 compatibility_date = "2026-10-01"
 
-[assets]
-directory = "./public"
-binding = "ASSETS"
-run_worker_first = ["/api/*"]
+rules = [{ type = "Text", globs = ["**/*.html"], fallthrough = false }]
 
 [ai]
 binding = "AI"
@@ -13,4 +10,4 @@ binding = "AI"
 [[d1_databases]]
 binding = "DB"
 database_name = "canavida"
-database_id = "5f92b386-1bda-4ffb-83e6-9c8a440b4c2f" 
+database_id = "PEGUE-AQUI-EL-ID-DE-SU-D1"

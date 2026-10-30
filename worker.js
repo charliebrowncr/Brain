@@ -2,6 +2,8 @@
 // Rutas: GET /api/reserva?nombre=&apellidos=   POST /api/chat
 // Secretos: LODGIFY_API_KEY   Bindings: AI (Workers AI), DB (D1)
 
+import APP_HTML from './index.html';
+
 const WAZE = 'https://www.waze.com/en/live-map/directions/cr/provincia-de-puntarenas/uvita/canavida-villas-and-resort?place=ChIJz3gMGphXoY8R1QERaYsYZdg';
 const norm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 const json = (d, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'content-type': 'application/json' } });
@@ -11,7 +13,7 @@ export default {
     const url = new URL(req.url);
     if (url.pathname === '/api/reserva') return reserva(url, env);
     if (url.pathname === '/api/chat' && req.method === 'POST') return chat(await req.json(), env);
-    return env.ASSETS.fetch(req); // sirve la app (archivos estáticos)
+    return new Response(APP_HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
   }
 };
 
